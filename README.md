@@ -15,7 +15,7 @@ Windows: jalankan di **Anaconda Prompt**. Mac: **Terminal**.
 git clone https://github.com/Fredyco/pyspark.git
 cd pyspark
 
-conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main   # Miniconda baru: sekali saja
+conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main   # error "invalid choice: 'tos'"? abaikan
 conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
 conda create -n dbt313 python=3.13 pip -y      # lewati kalau env dbt313 sudah ada
 conda activate dbt313
