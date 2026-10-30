@@ -20,7 +20,7 @@ conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
 conda create -n dbt313 python=3.13 pip -y      # lewati kalau env dbt313 sudah ada
 conda activate dbt313
 conda install -c conda-forge openjdk=21 -y
-python -m pip install -r requirements.txt
+python -m pip install pyspark==4.2.1 "pandas>=2.2.3,<3" psycopg2-binary python-dotenv jupyterlab
 
 java -version                                   # openjdk version "21..."
 python -c "import pyspark; print(pyspark.__version__)"   # 4.2.1
