@@ -4,6 +4,7 @@ Materi PySpark yang dijalankan langsung dengan **conda**, tanpa Docker.
 
 - `01_pandas_vs_spark.ipynb` → operasi pandas yang sudah dikenal dan versi Spark-nya.
 - `02_etl_superstore.ipynb` → ETL 3 file CSV Superstore ke star schema di PostgreSQL. Database & tabel dibuat dengan SQL.
+- `cheatsheet_pandas_spark.html` → contekan sintaks pandas ↔ Spark. Buka dengan klik dua kali (browser).
 
 Butuh: conda, PostgreSQL + pgAdmin di laptop, ±1,2 GB ruang disk.
 Versi Docker (PySpark + Airflow): [Fredyco/airflow_repo](https://github.com/Fredyco/airflow_repo).
@@ -12,6 +13,7 @@ Versi Docker (PySpark + Airflow): [Fredyco/airflow_repo](https://github.com/Fred
 
 ```
 pyspark/
+├── cheatsheet_pandas_spark.html  ← contekan pandas ↔ Spark (buka di browser)
 ├── requirements.txt              ← langkah 1 (daftar library)
 ├── .env.example → .env           ← langkah 2
 ├── sql/

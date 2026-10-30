@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pandas ↔ PySpark Cheat Sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: lembar referensi — toolbar pencarian sticky, tiap topik = tabel 3 kolom (operasi | pandas | PySpark), menumpuk jadi 1 kolom di HP */
+:root {
+  --bg: #f5f6fa;
+  --surface: #ffffff;
+  --ink: #1a1c2c;
+  --muted: #5a5f78;
+  --line: #dde0eb;
+  --code-bg: #eef0f7;
+  --pandas: #150458;
+  --pandas-soft: #e7e4f6;
+  --spark: #b9420c;
+  --spark-soft: #fbe9df;
+  --tk-str: #23704a;
+  --tk-num: #8a5300;
+  --tk-kw: #6528a8;
+  --tk-com: #7b8098;
+  --warn-bg: #fff6e0;
+  --warn-line: #e8c46a;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12131c; --surface: #1a1c28; --ink: #e8e9f2; --muted: #a0a4bd; --line: #2c2f42;
+    --code-bg: #212436; --pandas: #b3a8ff; --pandas-soft: #2a2550; --spark: #ff9a5e; --spark-soft: #3d2416;
+    --tk-str: #8fd6a4; --tk-num: #f2c46d; --tk-kw: #cfa8ff; --tk-com: #858aa6;
+    --warn-bg: #2e2716; --warn-line: #7a6326;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12131c; --surface: #1a1c28; --ink: #e8e9f2; --muted: #a0a4bd; --line: #2c2f42;
+  --code-bg: #212436; --pandas: #b3a8ff; --pandas-soft: #2a2550; --spark: #ff9a5e; --spark-soft: #3d2416;
+  --tk-str: #8fd6a4; --tk-num: #f2c46d; --tk-kw: #cfa8ff; --tk-com: #858aa6;
+  --warn-bg: #2e2716; --warn-line: #7a6326;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+}
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
+  z-index: 10; background: var(--bg);
+}
+.wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* Header */
+header.top { padding-block: 40px 20px; }
+.eyebrow {
+  font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600;
+}
+h1 {
+  font-family: var(--font-display); font-weight: 800; font-size: clamp(32px, 6vw, 54px);
+  line-height: 1.05; margin: 8px 0 12px; text-wrap: balance; letter-spacing: -.01em;
+}
+h1 .p { color: var(--pandas); }
+h1 .s { color: var(--spark); }
+h1 .arrow { color: var(--muted); font-weight: 600; }
+.lede { max-width: 68ch; color: var(--muted); margin: 0; }
+.lede code { font-family: var(--font-mono); font-size: .9em; }
+
+/* Toolbar */
+.toolbar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); border-bottom: 1px solid var(--line);
+  padding-block: 12px;
+}
+.toolbar .wrap { display: flex; flex-direction: column; gap: 10px; }
+.search-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.search {
+  flex: 1 1 280px; min-width: 0;
+  font: inherit; font-size: 15px; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  padding: 9px 12px;
+}
+.search:focus-visible { outline: 2px solid var(--pandas); outline-offset: 1px; }
+.count { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+nav.toc { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+nav.toc a {
+  flex: none; font-size: 13px; font-weight: 600; text-decoration: none; color: var(--muted);
+  padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface);
+}
+nav.toc a:hover, nav.toc a:focus-visible { color: var(--ink); border-color: var(--muted); outline: none; }
+
+/* Concepts */
+.concepts { padding-block: 28px 8px; }
+.concepts h2, section.topic h2 {
+  font-family: var(--font-display); font-weight: 800; font-size: 24px; margin: 0 0 14px; text-wrap: balance;
+}
+.cgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.ccard { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.ccard h3 { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
+.ccard dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 14px; }
+.ccard dt { font-weight: 600; }
+.ccard dt.p { color: var(--pandas); }
+.ccard dt.s { color: var(--spark); }
+.ccard dd { margin: 0; color: var(--muted); min-width: 0; }
+
+/* Topic tables */
+section.topic { padding-block: 26px 6px; scroll-margin-top: 130px; }
+section.topic h2 { display: flex; align-items: baseline; gap: 10px; }
+section.topic h2 small { font-family: var(--font-body); font-size: 14px; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
+.table { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.row, .head {
+  display: grid; grid-template-columns: minmax(150px, 0.7fr) minmax(0, 1.5fr) minmax(0, 1.5fr);
+}
+.head { background: var(--bg); border-bottom: 1px solid var(--line); }
+.head div { padding: 8px 14px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.head .p { color: var(--pandas); }
+.head .s { color: var(--spark); }
+.row + .row { border-top: 1px solid var(--line); }
+.op { padding: 12px 14px; font-weight: 600; font-size: 15px; min-width: 0; }
+.op .note { display: block; font-weight: 400; font-size: 13px; color: var(--muted); margin-top: 4px; }
+.cell { padding: 8px 10px 8px 0; min-width: 0; position: relative; }
+.cell .tag { display: none; }
+pre {
+  margin: 0; padding: 10px 40px 10px 12px; background: var(--code-bg); border-radius: 6px;
+  font-family: var(--font-mono); font-size: 13px; line-height: 1.55;
+  overflow-x: auto; white-space: pre; tab-size: 4;
+}
+.cell.p pre { box-shadow: inset 3px 0 0 var(--pandas); }
+.cell.s pre { box-shadow: inset 3px 0 0 var(--spark); }
+.copy {
+  position: absolute; top: 14px; right: 16px;
+  font: 600 11px var(--font-body); letter-spacing: .04em; text-transform: uppercase;
+  color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 5px;
+  padding: 2px 6px; cursor: pointer; opacity: .75;
+}
+.copy:hover, .copy:focus-visible { opacity: 1; color: var(--ink); outline: none; border-color: var(--muted); }
+.copy.done { color: var(--tk-str); opacity: 1; }
+.t-str { color: var(--tk-str); }
+.t-num { color: var(--tk-num); }
+.t-kw { color: var(--tk-kw); font-weight: 600; }
+.t-com { color: var(--tk-com); font-style: italic; }
+.t-F { color: var(--spark); font-weight: 600; }
+.t-pd { color: var(--pandas); font-weight: 600; }
+
+.empty { padding: 40px 0; color: var(--muted); text-align: center; }
+mark { background: var(--warn-bg); color: inherit; border-radius: 2px; box-shadow: 0 0 0 1px var(--warn-line); }
+
+/* Gotchas */
+.gotchas { padding-block: 30px 50px; }
+.gotchas ol { margin: 0; padding-left: 22px; display: grid; gap: 8px; max-width: 80ch; }
+.gotchas li { padding-left: 4px; }
+.gotchas code { font-family: var(--font-mono); font-size: .88em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+footer { padding-block: 0 40px; color: var(--muted); font-size: 13px; }
+
+@media (max-width: 760px) {
+  .head { display: none; }
+  .row { grid-template-columns: 1fr; padding-bottom: 10px; }
+  .op { padding-bottom: 6px; }
+  .cell { padding: 4px 10px 4px 10px; }
+  .cell .tag {
+    display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    margin: 0 0 4px 2px;
+  }
+  .cell.p .tag { color: var(--pandas); }
+  .cell.s .tag { color: var(--spark); }
+  .copy { top: 30px; right: 18px; }
+  section.topic { scroll-margin-top: 150px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .copy, nav.toc a { transition: opacity .15s, color .15s, border-color .15s; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="eyebrow">CODA Phase 2 · Batch Processing</div>
+    <h1><span class="p">pandas</span> <span class="arrow">↔</span> <span class="s">PySpark</span></h1>
+    <p class="lede">Padanan sintaks pandas 2.x dan PySpark 4, ditambah hal-hal penting yang hanya ada di Spark.
+      Contoh memakai data Superstore dengan nama kolom snake_case (<code>order_id</code>, <code>sales</code>, <code>region</code>, <code>customer_id</code>, …),
+      sama seperti notebook <code>01_pandas_vs_spark</code>. Kode PySpark mengasumsikan <code>from pyspark.sql import functions as F</code>.</p>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="wrap">
+    <div class="search-row">
+      <input id="q" class="search" type="search" placeholder="Cari: groupby, null, join, tanggal, rank…" aria-label="Cari sintaks" autocomplete="off">
+      <span class="count" id="count"></span>
+    </div>
+    <nav class="toc" id="toc" aria-label="Topik"></nav>
+  </div>
+</div>
+
+<main>
+  <div class="wrap">
+    <section class="concepts" aria-labelledby="konsep-h">
+      <h2 id="konsep-h">Beda cara berpikir</h2>
+      <div class="cgrid">
+        <div class="ccard"><h3>Eksekusi</h3><dl>
+          <dt class="p">pandas</dt><dd>Eager: tiap baris langsung dihitung.</dd>
+          <dt class="s">PySpark</dt><dd>Lazy: transformasi dicatat, baru jalan saat action (<code>show</code>, <code>count</code>, <code>write</code>).</dd></dl></div>
+        <div class="ccard"><h3>Mengubah data</h3><dl>
+          <dt class="p">pandas</dt><dd>Bisa diubah langsung: <code>df["x"] = …</code>, <code>inplace=True</code>.</dd>
+          <dt class="s">PySpark</dt><dd>Immutable: selalu simpan ulang, <code>df = df.withColumn(…)</code>.</dd></dl></div>
+        <div class="ccard"><h3>Lokasi data</h3><dl>
+          <dt class="p">pandas</dt><dd>Semua di RAM satu komputer.</dd>
+          <dt class="s">PySpark</dt><dd>Dipecah ke partisi, diproses paralel (bisa banyak mesin).</dd></dl></div>
+        <div class="ccard"><h3>Index &amp; urutan</h3><dl>
+          <dt class="p">pandas</dt><dd>Punya index; urutan baris terjaga.</dd>
+          <dt class="s">PySpark</dt><dd>Tidak ada index; urutan tidak dijamin tanpa <code>orderBy</code>.</dd></dl></div>
+      </div>
+    </section>
+
+    <div id="topics"></div>
+    <p class="empty" id="empty" hidden>Tidak ada sintaks yang cocok. Coba kata lain, misalnya <em>filter</em> atau <em>agg</em>.</p>
+
+    <section class="gotchas" id="jebakan" aria-labelledby="jebakan-h">
+      <h2 id="jebakan-h">Jebakan yang sering muncul</h2>
+      <ol>
+        <li>Lupa <code>escape='"'</code> saat membaca CSV yang teksnya berisi koma & tanda kutip: kolom bergeser dan angka terbaca <code>string</code>. Selalu cek <code>printSchema()</code>.</li>
+        <li><code>df.withColumn(…)</code> tanpa <code>df = …</code> tidak mengubah apa-apa, karena DataFrame Spark immutable.</li>
+        <li><code>df.head(5)</code> di Spark mengembalikan <em>list of Row</em>, bukan tabel. Untuk melihat data pakai <code>df.show(5)</code>.</li>
+        <li>Jumlah baris bertambah setelah join = tabel kanan punya ID duplikat. Jalankan <code>dropDuplicates(['id'])</code> sebelum join, dan bandingkan <code>count()</code> sebelum & sesudah.</li>
+        <li>Format tanggal berbeda: pandas <code>"%m/%d/%Y"</code>, Spark <code>"M/d/yyyy"</code> (<code>MM</code> = bulan, <code>mm</code> = menit).</li>
+        <li><code>write.jdbc(..., mode="overwrite")</code> menghapus tabel buatan DDL beserta primary & foreign key. Untuk tabel yang dibuat dengan SQL, pakai <code>mode="append"</code>.</li>
+        <li>Load fact sebelum dimension → error <em>foreign key</em>. Selalu load dimension dulu.</li>
+        <li>Host PostgreSQL: dengan conda, notebook jalan di laptop → <code>localhost</code>. Dengan Docker, <code>localhost</code> = container itu sendiri → pakai <code>host.docker.internal</code>.</li>
+        <li><code>df.write.csv("out")</code> menghasilkan <strong>folder</strong> berisi file <code>part-*</code>, bukan satu file.</li>
+        <li><code>toPandas()</code> menarik semua data ke memori laptop. Lakukan setelah data diagregasi atau difilter.</li>
+        <li>Kondisi gabungan wajib diberi kurung: <code>(a &gt; 1) &amp; (b == 2)</code>. Pakai <code>&amp;</code>, <code>|</code>, <code>~</code>, bukan <code>and</code>/<code>or</code>/<code>not</code>.</li>
+      </ol>
+    </section>
+  </div>
+</main>
+
+<footer><div class="wrap">pandas 2.x · PySpark 4.2</div></footer>
+
+<script>
+const TOPICS = [
+  { id: "baca", title: "Membaca & melihat data", rows: [
+    ["Import", `import pandas as pd`, `from pyspark.sql import SparkSession, functions as F
+spark = SparkSession.builder.appName("app").getOrCreate()`],
+    ["Baca CSV", `df = pd.read_csv("orders.csv")`, `df = spark.read.csv("orders.csv", header=True, inferSchema=True, escape='"')`, "escape: teks berisi koma & tanda kutip"],
+    ["Lihat beberapa baris", `df.head(5)`, `df.show(5)
+df.show(5, truncate=False)  # teks tidak dipotong`],
+    ["Jumlah baris & kolom", `df.shape`, `(df.count(), len(df.columns))`],
+    ["Nama kolom", `df.columns`, `df.columns`],
+    ["Tipe data", `df.info()`, `df.printSchema()`, "cek: angka tidak boleh terbaca string"],
+    ["Ganti nama semua kolom", `df.columns = ["order_id", "sales"]`, `df = df.toDF("order_id", "sales")
+df = df.toDF(*nama_baru)  # dari list`],
+    ["Ganti nama 1 kolom", `df = df.rename(columns={"Sales": "sales"})`, `df = df.withColumnRenamed("Sales", "sales")`],
+  ]},
+  { id: "pilih", title: "Pilih, filter, urutkan", rows: [
+    ["Pilih kolom", `df[["order_id", "sales"]]`, `df.select("order_id", "sales")`],
+    ["Filter 1 kondisi", `df[df["sales"] > 3000]`, `df.filter(F.col("sales") > 3000)`],
+    ["Filter beberapa kondisi", `df[(df["sales"] > 1000) & (df["region"] == "West")]`, `df.filter((F.col("sales") > 1000) & (F.col("region") == "West"))`, "wajib kurung di tiap kondisi"],
+    ["Filter dengan teks", `df.query("sales > 3000")`, `df.filter("sales > 3000")`],
+    ["Termasuk dalam daftar", `df[df["state"].isin(["Texas", "Ohio"])]`, `df.filter(F.col("state").isin("Texas", "Ohio"))`],
+    ["Urut turun", `df.sort_values("sales", ascending=False)`, `df.orderBy(F.desc("sales"))`],
+    ["Top n", `df.nlargest(5, "sales")`, `df.orderBy(F.desc("sales")).limit(5)`],
+    ["Frekuensi tiap nilai", `df["region"].value_counts()`, `df.groupBy("region").count().orderBy(F.desc("count"))`],
+    ["Nilai unik", `df["region"].unique()`, `df.select("region").distinct()`],
+    ["Jumlah nilai unik", `df["customer_id"].nunique()`, `df.select(F.countDistinct("customer_id"))`],
+  ]},
+  { id: "kolom", title: "Menambah & mengubah kolom", rows: [
+    ["Kolom hasil hitung", `df["unit_price"] = df["sales"] / df["quantity"]`, `df = df.withColumn("unit_price", F.col("sales") / F.col("quantity"))`],
+    ["Pembulatan", `df["sales"].round(2)`, `F.round("sales", 2)`],
+    ["Kolom bernilai tetap", `df["source"] = "csv"`, `df = df.withColumn("source", F.lit("csv"))`],
+    ["If-else", `np.where(df["sales"] >= 1000, "Besar", "Kecil")`, `F.when(F.col("sales") >= 1000, "Besar").otherwise("Kecil")`],
+    ["Ubah tipe data", `df["postal_code"].astype(str)`, `F.col("postal_code").cast("string")`],
+    ["Hapus kolom", `df.drop(columns=["profit"])`, `df.drop("profit")`],
+  ]},
+  { id: "bersih", title: "Membersihkan data", rows: [
+    ["Jumlah baris duplikat", `df.duplicated().sum()`, `df.count() - df.dropDuplicates().count()`],
+    ["Hapus duplikat", `df.drop_duplicates()`, `df.dropDuplicates()`],
+    ["1 baris per ID", `df.drop_duplicates("product_id")`, `df.dropDuplicates(["product_id"])`],
+    ["Jumlah null per kolom", `df.isna().sum()`, `for c in df.columns:
+    print(c, df.filter(F.col(c).isNull()).count())`],
+    ["Isi null", `df.fillna({"postal_code": "Unknown"})`, `df.fillna({"postal_code": "Unknown"})`],
+    ["Buang baris null", `df.dropna(subset=["sales"])`, `df.dropna(subset=["sales"])`],
+    ["Rapikan spasi & huruf", `df["region"].str.strip().str.title()`, `F.initcap(F.trim("region"))`, "WEST → West"],
+    ["Huruf kecil / besar", `.str.lower()  /  .str.upper()`, `F.lower("region")  /  F.upper("region")`],
+    ["Tambah 0 di depan", `df["postal_code"].astype(str).str.zfill(5)`, `F.lpad(F.col("postal_code").cast("string"), 5, "0")`, "6824 → 06824"],
+    ["Panjang teks", `df["postal_code"].str.len()`, `F.length("postal_code")`],
+    ["Mengandung kata", `df[df["city"].str.contains("San")]`, `df.filter(F.col("city").contains("San"))`],
+    ["Ganti teks", `df["city"].str.replace("-", " ")`, `F.regexp_replace("city", "-", " ")`],
+  ]},
+  { id: "tanggal", title: "Tanggal", rows: [
+    ["Teks ke tanggal", `pd.to_datetime(df["order_date"], format="%m/%d/%Y")`, `F.to_date("order_date", "M/d/yyyy")`, "11/8/2020 → 2020-11-08"],
+    ["Tahun / kuartal / bulan", `df["order_date"].dt.year
+df["order_date"].dt.quarter
+df["order_date"].dt.month`, `F.year("order_date")
+F.quarter("order_date")
+F.month("order_date")`],
+    ["Nama bulan / hari", `df["order_date"].dt.month_name()
+df["order_date"].dt.day_name()`, `F.date_format("order_date", "MMMM")
+F.date_format("order_date", "EEEE")`],
+    ["Tanggal jadi angka ID", `df["order_date"].dt.strftime("%Y%m%d").astype(int)`, `F.date_format("order_date", "yyyyMMdd").cast("int")`, "2020-11-08 → 20201108"],
+    ["Selisih hari", `(df["ship_date"] - df["order_date"]).dt.days`, `F.datediff("ship_date", "order_date")`],
+  ]},
+  { id: "agregasi", title: "Group by & agregasi", rows: [
+    ["Total 1 kolom", `df["sales"].sum()`, `df.agg(F.sum("sales")).first()[0]`],
+    ["Group by + agregasi", `df.groupby("region").agg(
+    total_sales=("sales", "sum"),
+    rows=("order_id", "count"),
+    customers=("customer_id", "nunique"),
+)`, `df.groupBy("region").agg(
+    F.sum("sales").alias("total_sales"),
+    F.count("order_id").alias("rows"),
+    F.countDistinct("customer_id").alias("customers"),
+)`],
+    ["Group by beberapa kolom", `df.groupby(["region", "category"])["sales"].sum()`, `df.groupBy("region", "category").agg(F.sum("sales").alias("sales"))`],
+    ["Filter hasil agregasi", `g = df.groupby("region")["sales"].sum()
+g[g > 50000]`, `df.groupBy("region").agg(F.sum("sales").alias("total")).filter("total > 50000")`],
+    ["Pivot", `df.pivot_table(index="region", columns="category", values="sales", aggfunc="sum")`, `df.groupBy("region").pivot("category").sum("sales")`],
+  ]},
+  { id: "join", title: "Join & menggabungkan", rows: [
+    ["Join (left)", `pd.merge(orders, products, on="product_id", how="left")`, `orders.join(products, on="product_id", how="left")`],
+    ["Join 3 tabel", `orders.merge(customers, on="customer_id").merge(products, on="product_id")`, `(orders.join(customers, on="customer_id", how="left")
+       .join(products, on="product_id", how="left"))`, "cek count() sebelum & sesudah"],
+    ["Join beberapa kolom", `pd.merge(a, b, on=["state", "city"])`, `a.join(b, on=["state", "city"])`],
+    ["Join nama kolom beda", `pd.merge(a, b, left_on="cust_id", right_on="customer_id")`, `a.join(b, a["cust_id"] == b["customer_id"])`],
+    ["Hanya yang cocok (inner)", `pd.merge(orders, products, on="product_id", how="inner")`, `orders.join(products, on="product_id", how="inner")`],
+    ["Yang tidak punya pasangan", `orders[~orders["product_id"].isin(products["product_id"])]`, `orders.join(products, on="product_id", how="left_anti")`, "mencari data yang hilang"],
+    ["Tumpuk baris", `pd.concat([a, b], ignore_index=True)`, `a.union(b)
+a.unionByName(b)  # cocokkan nama kolom`],
+  ]},
+  { id: "nomor", title: "Nomor urut & window", rows: [
+    ["Nomor urut 1, 2, 3", `df = df.sort_values(["state", "city"])
+df["city_id"] = range(1, len(df) + 1)`, `from pyspark.sql.window import Window
+df = df.withColumn("city_id", F.row_number().over(Window.orderBy("state", "city")))`, "membuat ID untuk dimension"],
+    ["Ranking per grup", `df.groupby("category")["sales"].rank(method="dense", ascending=False)`, `w = Window.partitionBy("category").orderBy(F.desc("sales"))
+F.dense_rank().over(w)`],
+    ["Running total", `df.sort_values("month")["sales"].cumsum()`, `w = Window.orderBy("month").rowsBetween(Window.unboundedPreceding, Window.currentRow)
+F.sum("sales").over(w)`],
+  ]},
+  { id: "native", title: "Spark native yang penting", rows: [
+    ["Transformation vs action", `# pandas: semua langsung dihitung`, `df2 = df.filter(F.col("sales") > 0)   # transformation: belum dihitung
+df2.count()                              # action: baru dihitung`, "action: show, count, collect, write, toPandas"],
+    ["DataFrame tanpa show()", `df   # langsung tampil tabel`, `df   # hanya tampil DataFrame[kolom: tipe, ...]
+df.show(5)   # baru menampilkan data`, "lazy: data belum dihitung sebelum ada action"],
+    ["Tampil otomatis di Jupyter", `# otomatis`, `spark.conf.set("spark.sql.repl.eagerEval.enabled", True)
+spark.conf.set("spark.sql.repl.eagerEval.maxNumRows", 5)
+df   # tampil sebagai tabel HTML`, "hanya di Jupyter; script .py tetap pakai show()"],
+    ["Simpan hasil di memori", `# tidak perlu`, `df = df.cache()   # dipakai berulang? simpan di memori
+df.count()        # cache terisi saat action pertama`],
+    ["Lihat rencana eksekusi", `# tidak ada`, `df.explain()`],
+    ["Jumlah & atur partisi", `# tidak ada`, `df.rdd.getNumPartitions()
+df = df.repartition(4)   # pecah jadi 4 (shuffle)
+df = df.coalesce(1)      # gabung jadi 1 (tanpa shuffle)`],
+    ["Pantau job", `# tidak ada`, `# buka http://localhost:4040 (Spark UI) selama session aktif`],
+    ["Schema eksplisit", `pd.read_csv(path, dtype={"sales": float})`, `schema = "order_id STRING, sales DOUBLE, quantity INT"
+df = spark.read.csv(path, header=True, schema=schema)`, "lebih cepat & pasti dari inferSchema"],
+    ["Query SQL ke DataFrame", `# tidak ada bawaan`, `df.createOrReplaceTempView("orders")
+spark.sql("SELECT region, SUM(sales) FROM orders GROUP BY region").show()`],
+    ["Konversi pandas ↔ Spark", `pdf = sdf.toPandas()`, `sdf = spark.createDataFrame(pdf)`, "toPandas hanya untuk data kecil"],
+    ["Tulis ke PostgreSQL", `df.to_sql("fact_sales", engine, if_exists="append", index=False)`, `df.write.jdbc(url, "fact_sales", mode="append", properties=props)`, "mode: append, overwrite, ignore, error"],
+    ["Baca dari PostgreSQL", `pd.read_sql("SELECT * FROM fact_sales", engine)`, `spark.read.jdbc(url, "(SELECT * FROM fact_sales) AS t", properties=props)`, "query dibungkus kurung + alias"],
+    ["URL & properti JDBC", `# engine = create_engine("postgresql://...")`, `url = f"jdbc:postgresql://{os.environ['PG_HOST']}:5432/dwh"
+props = {"user": os.environ["PG_USER"], "password": os.environ["PG_PASSWORD"],
+         "driver": "org.postgresql.Driver"}`, "PG_HOST: localhost (conda) / host.docker.internal (Docker)"],
+    ["Tutup session", `# tidak perlu`, `spark.stop()`],
+  ]},
+];
+
+const KW = /(#[^\n]*)|("""[\s\S]*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|\b(\d[\d_]*(?:\.\d+)?)\b|\b(import|from|as|for|in|lambda|True|False|None|and|or|not|def|return|del)\b|\b(F|Window)\b(?=\.)|\b(pd|np)\b(?=\.)/g;
+const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function highlight(code) {
+  let out = "", last = 0, m;
+  KW.lastIndex = 0;
+  while ((m = KW.exec(code))) {
+    out += esc(code.slice(last, m.index));
+    const cls = m[1] ? "t-com" : m[2] ? "t-str" : m[3] ? "t-num" : m[4] ? "t-kw" : m[5] ? "t-F" : "t-pd";
+    out += `<span class="${cls}">${esc(m[0])}</span>`;
+    last = KW.lastIndex;
+  }
+  return out + esc(code.slice(last));
+}
+
+const topicsEl = document.getElementById("topics");
+const tocEl = document.getElementById("toc");
+const rowEls = [];
+
+function codeCell(kind, code) {
+  const cell = document.createElement("div");
+  cell.className = "cell " + kind;
+  cell.innerHTML = `<span class="tag">${kind === "p" ? "pandas" : "PySpark"}</span><pre><code>${highlight(code)}</code></pre>`;
+  const btn = document.createElement("button");
+  btn.className = "copy"; btn.type = "button"; btn.textContent = "Copy";
+  btn.setAttribute("aria-label", "Copy kode " + (kind === "p" ? "pandas" : "PySpark"));
+  btn.addEventListener("click", () => {
+    const done = () => { btn.textContent = "Copied"; btn.classList.add("done");
+      setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("done"); }, 1400); };
+    const fallback = () => { const r = document.createRange(); r.selectNodeContents(cell.querySelector("code"));
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = "Tekan Ctrl/⌘+C"; };
+    try { navigator.clipboard.writeText(code).then(done, fallback); } catch (e) { fallback(); }
+  });
+  cell.appendChild(btn);
+  return cell;
+}
+
+TOPICS.forEach(t => {
+  const sec = document.createElement("section");
+  sec.className = "topic"; sec.id = t.id;
+  sec.innerHTML = `<h2>${t.title} <small></small></h2>`;
+  const table = document.createElement("div");
+  table.className = "table";
+  table.innerHTML = `<div class="head"><div>Operasi</div><div class="p">pandas</div><div class="s">PySpark</div></div>`;
+  t.rows.forEach(([op, pd, sp, note]) => {
+    const row = document.createElement("div");
+    row.className = "row";
+    const opEl = document.createElement("div");
+    opEl.className = "op";
+    opEl.innerHTML = esc(op) + (note ? `<span class="note">${esc(note)}</span>` : "");
+    row.append(opEl, codeCell("p", pd), codeCell("s", sp));
+    table.appendChild(row);
+    rowEls.push({ row, sec, text: (op + " " + pd + " " + sp + " " + (note || "") + " " + t.title).toLowerCase() });
+  });
+  sec.appendChild(table);
+  topicsEl.appendChild(sec);
+  const a = document.createElement("a");
+  a.href = "#" + t.id; a.textContent = t.title.split(" & ")[0].split(" (")[0];
+  tocEl.appendChild(a);
+});
+const jb = document.createElement("a"); jb.href = "#jebakan"; jb.textContent = "Jebakan"; tocEl.appendChild(jb);
+
+const qEl = document.getElementById("q"), countEl = document.getElementById("count"), emptyEl = document.getElementById("empty");
+function applyFilter() {
+  const terms = qEl.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  let shown = 0;
+  const perSec = new Map();
+  rowEls.forEach(({ row, sec, text }) => {
+    const ok = terms.every(w => text.includes(w));
+    row.hidden = !ok;
+    if (ok) shown++;
+    perSec.set(sec, (perSec.get(sec) || 0) + (ok ? 1 : 0));
+  });
+  perSec.forEach((n, sec) => { sec.hidden = n === 0; sec.querySelector("h2 small").textContent = n + " sintaks"; });
+  countEl.textContent = terms.length ? `${shown} dari ${rowEls.length} sintaks` : `${rowEls.length} sintaks`;
+  emptyEl.hidden = shown !== 0;
+}
+qEl.addEventListener("input", applyFilter);
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && document.activeElement !== qEl) { e.preventDefault(); qEl.focus(); }
+});
+applyFilter();
+</script>
+</body>
+</html>
